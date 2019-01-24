@@ -656,6 +656,9 @@ func CheckResponse(r *http.Response) error {
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
+		if errorResponse.Response == nil {
+			errorResponse.Response = r
+		}
 	}
 	switch {
 	case r.StatusCode == http.StatusUnauthorized && strings.HasPrefix(r.Header.Get(headerOTP), "required"):
