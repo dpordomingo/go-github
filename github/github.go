@@ -596,6 +596,12 @@ type ErrorResponse struct {
 }
 
 func (r *ErrorResponse) Error() string {
+	if r.Response == nil {
+		return fmt.Sprintf("%v %+v", r.Message, r.Errors)
+	} else if r.Response.Request == nil {
+		return fmt.Sprintf("%d %v %+v", r.Response.StatusCode, r.Message, r.Errors)
+	}
+
 	return fmt.Sprintf("%v %v: %d %v %+v",
 		r.Response.Request.Method, sanitizeURL(r.Response.Request.URL),
 		r.Response.StatusCode, r.Message, r.Errors)
@@ -617,6 +623,14 @@ type RateLimitError struct {
 }
 
 func (r *RateLimitError) Error() string {
+	if r.Response == nil {
+		return fmt.Sprintf("%v %v",
+			r.Message, formatRateReset(r.Rate.Reset.Time.Sub(time.Now())))
+	} else if r.Response.Request == nil {
+		return fmt.Sprintf("%d %v %v",
+			r.Response.StatusCode, r.Message, formatRateReset(r.Rate.Reset.Time.Sub(time.Now())))
+	}
+
 	return fmt.Sprintf("%v %v: %d %v %v",
 		r.Response.Request.Method, sanitizeURL(r.Response.Request.URL),
 		r.Response.StatusCode, r.Message, formatRateReset(r.Rate.Reset.Time.Sub(time.Now())))
@@ -650,6 +664,12 @@ type AbuseRateLimitError struct {
 }
 
 func (r *AbuseRateLimitError) Error() string {
+	if r.Response == nil {
+		return fmt.Sprintf("%v", r.Message)
+	} else if r.Response.Request == nil {
+		return fmt.Sprintf("%d %v", r.Response.StatusCode, r.Message)
+	}
+
 	return fmt.Sprintf("%v %v: %d %v",
 		r.Response.Request.Method, sanitizeURL(r.Response.Request.URL),
 		r.Response.StatusCode, r.Message)
@@ -720,6 +740,9 @@ func CheckResponse(r *http.Response) error {
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
+		if errorResponse.Response == nil {
+			errorResponse.Response = r
+		}
 	}
 	switch {
 	case r.StatusCode == http.StatusUnauthorized && strings.HasPrefix(r.Header.Get(headerOTP), "required"):
